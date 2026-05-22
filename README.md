@@ -36,12 +36,13 @@ The gateway doesn't care if a COM port is local or 100km away — it just pulls 
 
 ## Quick Start
 
-1. Prepare `项目变量信息.xlsx` (project variable configuration) file in the same directory as the .exe
+1. Prepare `项目变量信息.xlsx` (project variable configuration) in the same directory as the .exe. **If the file doesn't exist, the software auto-generates a template** — or use the desktop shortcut to create one.
 2. Double-click `modbusrtu_broker.exe`
 3. Open browser to `http://localhost:53046/`
-4. View real-time data, query history, configure alerts
+4. Login with username and password — **configured inside the Excel table**, not hardcoded
+5. After login, the dashboard shows live API call links with actual examples
 
-See `docs/quick-start.md` for detailed setup instructions.
+See `docs/quick-start.md` for detailed setup.
 
 ## Compatibility
 
