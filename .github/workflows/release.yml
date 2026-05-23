@@ -1,0 +1,84 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build Windows EXE
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.5'
+          cache: true
+
+      - name: Install mingw-w64 (CGO cross-compiler)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 mingw-w64-tools
+
+      - name: Init go.mod (single-file module)
+        run: |
+          go mod init modbusrtu_broker
+          go mod tidy
+
+      - name: Build EXE
+        run: |
+          CGO_CFLAGS="-D_WIN32" \
+          CGO_LDFLAGS="-lws2_32" \
+          CC=x86_64-w64-mingw32-gcc \
+          GOOS=windows \
+          GOARCH=amd64 \
+          CGO_ENABLED=1 \
+          go build -ldflags '-s -w -extldflags=-static' -o modbusrtu_broker.exe modbusrtu_broker.go
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: one-modbus-windows-amd64
+          path: modbusrtu_broker.exe
+
+  release:
+    name: Create Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: one-modbus-windows-amd64
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "notes=### one-modbus $VERSION
+
+          - Windows amd64 单文件 exe，无需安装，解压即用
+          - 配置方法：同级目录放 项目变量信息.xlsx（没有会自动生成模板）
+          - 双击 modbusrtu_broker.exe 启动
+          - 浏览器打开 http://localhost:53046/ 查看数据" >> release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: one-modbus ${{ github.ref_name }}
+          body_path: release_notes.md
+          files: modbusrtu_broker.exe
+          draft: false
+          prerelease: false
