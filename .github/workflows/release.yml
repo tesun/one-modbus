@@ -67,3 +67,42 @@ jobs:
           files: modbusrtu_broker.exe
           draft: false
           prerelease: false
+
+      - name: Sync to Gitee Release
+        env:
+          TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          BODY=$(cat release_notes.md | jq -Rs .)
+          echo "Create Gitee release..."
+          RESP=$(curl -s -X POST "https://gitee.com/api/v5/repos/dingjiazhi/one-modbus/releases" \
+            -H "Content-Type: application/json" \
+            -d "{\"access_token\":\"${TOKEN}\",\"tag_name\":\"${TAG}\",\"name\":\"one-modbus ${TAG}\",\"body\":${BODY},\"target_commitish\":\"master\"}")
+          RID=$(echo "$RESP" | jq -r '.id // "null"')
+          if [ "$RID" != "null" ]; then
+            echo "Upload exe to Gitee..."
+            curl -s -X POST "https://gitee.com/api/v5/repos/dingjiazhi/one-modbus/releases/${RID}/attach_files" \
+              -F "access_token=${TOKEN}" \
+              -F "file=@modbusrtu_broker.exe"
+          else
+            echo "Gitee response: $RESP"
+          fi
+
+      - name: Sync to GitCode Release
+        env:
+          TOKEN: ${{ secrets.GITCODE_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          BODY=$(cat release_notes.md | jq -Rs .)
+          echo "Create GitCode release..."
+          curl -s -X POST "https://gitcode.com/api/v1/repos/weixin_45444393/one-modbus/releases" \
+            -H "Content-Type: application/json" \
+            -H "PRIVATE-TOKEN: ${TOKEN}" \
+            -H "User-Agent: GitHub-Actions" \
+            -d "{\"tag_name\":\"${TAG}\",\"name\":\"one-modbus ${TAG}\",\"body\":${BODY}}"
+          echo ""
+          echo "Upload exe to GitCode..."
+          curl -s -X POST "https://gitcode.com/api/v1/repos/weixin_45444393/one-modbus/releases/${TAG}/assets" \
+            -H "PRIVATE-TOKEN: ${TOKEN}" \
+            -H "User-Agent: GitHub-Actions" \
+            -F "file=@modbusrtu_broker.exe"
