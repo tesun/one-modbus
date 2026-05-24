@@ -74,4 +74,6 @@
 
 ## 开源协议
 
-MIT
+GNU Affero General Public License v3.0 (AGPL-3.0)
+
+任何公司修改本软件后，以网络服务形式提供给第三方使用，**必须**公开发布修改后的完整源码。详见 `LICENSE` 文件。

@@ -71,4 +71,6 @@ See `docs/quick-start.md` for detailed setup.
 
 ## License
 
-MIT
+GNU Affero General Public License v3.0 (AGPL-3.0)
+
+Any company that modifies this software and provides it as a network service to third parties **must** release the complete corresponding source code of the modified version. See `LICENSE` for details.
