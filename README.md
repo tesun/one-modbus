@@ -38,9 +38,9 @@ The gateway doesn't care if a COM port is local or 100km away — it just pulls 
 
 1. Prepare `项目变量信息.xlsx` (project variable configuration) in the same directory as the .exe. **If the file doesn't exist, the software auto-generates a template** — or use the desktop shortcut to create one.
 2. Double-click `modbusrtu_broker.exe`
-3. Open browser to `http://localhost:53046/`
+3. Open browser to `http://localhost:53046/` to log in
 4. Login with username and password — **configured inside the Excel table**, not hardcoded
-5. After login, the dashboard shows live API call links with actual examples
+5. After login, go to **`http://127.0.0.1:53046/统计`** — the statistics page shows live API examples, all available endpoints with sample requests, and real-time gateway status. This is where you get the actual API calls.
 
 See `docs/quick-start.md` for detailed setup.
 
