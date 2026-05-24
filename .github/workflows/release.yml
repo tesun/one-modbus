@@ -100,7 +100,16 @@ jobs:
             -H "Authorization: Bearer ${TOKEN}" \
             -d "{\"tag_name\":\"${TAG}\",\"name\":\"one-modbus ${TAG}\",\"body\":${BODY},\"target_commitish\":\"master\"}"
           echo ""
-          echo "Upload exe to GitCode..."
-          curl -s --connect-timeout 30 --max-time 120 -X POST "https://api.gitcode.com/api/v5/repos/weixin_45444393/one-modbus/releases/${TAG}/assets" \
-            -H "Authorization: Bearer ${TOKEN}" \
-            -F "file=@modbusrtu_broker.exe"
+          echo "Get upload URL..."
+          UPLOAD_URL=$(curl -s --connect-timeout 30 --max-time 30 \
+            "https://api.gitcode.com/api/v5/repos/weixin_45444393/one-modbus/releases/${TAG}/upload_url" \
+            -H "Authorization: Bearer ${TOKEN}" | jq -r '.upload_url // empty')
+          echo "Upload URL: $UPLOAD_URL"
+          if [ -n "$UPLOAD_URL" ]; then
+            echo "Upload exe to GitCode..."
+            curl -s --connect-timeout 30 --max-time 120 -X PUT "$UPLOAD_URL" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary "@modbusrtu_broker.exe"
+          else
+            echo "No upload URL, upload failed"
+          fi
