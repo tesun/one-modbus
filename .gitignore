@@ -25,3 +25,4 @@ temp/
 *项目变量信息*.xlsx
 *项目变量信息备份*.xlsx
 SQLiteDB/
+.github/
