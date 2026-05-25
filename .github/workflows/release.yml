@@ -1,20 +1,22 @@
 name: Build & Release
 
 # 传输策略（永久生效）
-# 国际上传只做一次（美国 → Gitee），后续国内全并行分发，不再重复跨海
-# GitHub 编译 → Gitee（唯一跨海）→ GitCode 等国内平台从 Gitee CDN 取
+# GitHub（美国编译）→ 自带 .exe 附件（国际下载点）
+# Gitee（国内）→ 唯一跨海上传 .exe（电工国内下载点）
+# GitCode → 只放 Gitee 下载链接，不传附件（国内链路，不重复跨海）
 #
 # ┌─ GitHub（美国编译）──────┐
 # │  ① 编译 .exe            │
-# │  ② 创建 GitHub Release   │
+# │  ② 创建 GitHub Release   │ ← 自带 .exe 附件
 # └────────┬─────────────────┘
-#          ↓ 唯一一次国际上传
+#          ↓ 唯一一次跨海上传
 # ┌─ Gitee（国内）───────────┐
-# │  ③ 上传 .exe（跨海）      │
+# │  ③ 上传 .exe（跨海）      │ ← 电工国内下载
 # └────────┬─────────────────┘
-#    ┌─────┴──────┐  ← 国内全并行
-#    ↓            ↓
-# GitCode   (未来其他平台)
+#          ↓ 国内链路
+# ┌─ GitCode ────────────────┐
+# │  ④ 创建 GitCode Release  │ ← 放 Gitee 下载链接，不传附件
+# └──────────────────────────┘
 
 on:
   push:
@@ -78,6 +80,10 @@ jobs:
           echo "- 配置方法：同级目录放 项目变量信息.xlsx（没有会自动生成模板）" >> release_notes.md
           echo "- 双击 modbusrtu_broker.exe 启动" >> release_notes.md
           echo "- 浏览器打开 http://127.0.0.1:53046/统计 即可进入" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "## 下载" >> release_notes.md
+          echo "国内用户在 [Gitee](https://gitee.com/dingjiazhi/one-modbus/releases/download/${VERSION}/modbusrtu_broker.exe) 下载更快" >> release_notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -132,32 +138,35 @@ jobs:
           fi
 
   sync-gitcode:
-    name: Sync to GitCode (from Gitee CDN, artifact fallback)
+    name: Sync to GitCode (link-only, no exe)
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build, release, sync-gitee]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: one-modbus-windows-amd64
-      - uses: actions/download-artifact@v4
-        with:
           name: release-notes
 
-      - name: Upload release notes to GitCode
+      - name: Create/update GitCode Release with Gitee download link
         env:
           GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
         run: |
           set -e
           TAG="${GITHUB_REF#refs/tags/}"
 
-          # 构建 release payload
+          # release notes 末尾追加 Gitee 下载链接
+          cat release_notes.md > /tmp/gitcode_body.md
+          echo "" >> /tmp/gitcode_body.md
+          echo "---" >> /tmp/gitcode_body.md
+          echo "## 下载" >> /tmp/gitcode_body.md
+          echo "[下载 modbusrtu_broker.exe（Gitee 国内快）](https://gitee.com/dingjiazhi/one-modbus/releases/download/${TAG}/modbusrtu_broker.exe)" >> /tmp/gitcode_body.md
+
           jq -n --arg tag "$TAG" --arg name "one-modbus $TAG" \
-            --arg body "$(cat release_notes.md)" \
+            --arg body "$(cat /tmp/gitcode_body.md)" \
             '{tag_name: $tag, name: $name, body: $body, target_commitish: "master"}' \
             > /tmp/gitcode_release_payload.json
 
-          # ⚠️ GitCode API 坑：Release 对象没有 id 字段！用 tag_name 判断存在性，不要用 .id // empty
+          # ⚠️ GitCode API 坑：Release 对象没有 id 字段！用 tag_name 判断
           echo "::group::Check/reconcile GitCode release for ${TAG}"
           EXISTING=$(curl -sS --connect-timeout 30 --max-time 30 \
             "https://api.gitcode.com/api/v5/repos/weixin_45444393/one-modbus/releases/tags/${TAG}" \
@@ -167,76 +176,17 @@ jobs:
 
           if [ "$EXISTING_TAG" = "$TAG" ]; then
             echo "Release ${TAG} already exists, updating via PUT..."
-            RESP=$(curl -sS --connect-timeout 30 --max-time 60 -X PUT \
+            curl -sS --connect-timeout 30 --max-time 60 -X PUT \
               "https://api.gitcode.com/api/v5/repos/weixin_45444393/one-modbus/releases/${TAG}" \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer ${GITCODE_TOKEN}" \
-              -d @/tmp/gitcode_release_payload.json)
-            echo "Update response:"
-            echo "$RESP" | jq '{tag_name, name, message}' 2>/dev/null || echo "$RESP"
+              -d @/tmp/gitcode_release_payload.json | jq '{tag_name, name, message}' 2>/dev/null
           else
             echo "Release ${TAG} not found, creating via POST..."
-            RESP=$(curl -sS --connect-timeout 30 --max-time 60 -X POST \
+            curl -sS --connect-timeout 30 --max-time 60 -X POST \
               "https://api.gitcode.com/api/v5/repos/weixin_45444393/one-modbus/releases" \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer ${GITCODE_TOKEN}" \
-              -d @/tmp/gitcode_release_payload.json)
-            echo "Create response:"
-            echo "$RESP" | jq '{tag_name, name, message}' 2>/dev/null || echo "$RESP"
+              -d @/tmp/gitcode_release_payload.json | jq '{tag_name, name, message}' 2>/dev/null
           fi
-
-      - name: Upload exe to GitCode (from Gitee CDN, fallback to artifact)
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
-        run: |
-          set -e
-          TAG="${GITHUB_REF#refs/tags/}"
-
-          # 优先从 Gitee CDN 下载 exe（国内快），失败才用 artifact
-          echo "::group::Download exe for GitCode upload"
-          echo "Try to download exe from Gitee CDN..."
-          # ⚠️ Gitee API 必须传 access_token（repo 公开也要），否则返回空 assets
-          GITEE_INFO=$(curl -s "https://gitee.com/api/v5/repos/dingjiazhi/one-modbus/releases/tags/${TAG}?access_token=${GITEE_TOKEN}")
-          EXE_URL=$(echo "$GITEE_INFO" | jq -r '.assets[] | select(.name | endswith(".exe")) | .browser_download_url // empty')
-          if [ -n "$EXE_URL" ]; then
-            echo "Download from Gitee CDN: $EXE_URL"
-            curl -sL -o /tmp/modbusrtu_broker.exe "$EXE_URL"
-          else
-            echo "Gitee CDN not available, use local artifact"
-            cp modbusrtu_broker.exe /tmp/modbusrtu_broker.exe
-          fi
-          ls -la /tmp/modbusrtu_broker.exe
-          echo "::endgroup::"
-
-          # ⚠️ GitCode API 上传附件：必须加 ?file_name= 参数（缺了报 400）
-          # 返回的 headers(x-obs-acl/x-obs-meta-project-id/x-obs-callback) 也必须 PUT 时带上
-          echo "::group::Get GitCode upload URL by tag name..."
-          UPLOAD_RESP=$(curl -sS --connect-timeout 30 --max-time 30 \
-            "https://api.gitcode.com/api/v5/repos/weixin_45444393/one-modbus/releases/${TAG}/upload_url?file_name=modbusrtu_broker.exe" \
-            -H "Authorization: Bearer ${GITCODE_TOKEN}")
-          # ⚠️ GitCode 返回的字段名是 .url 不是 .upload_url
-          UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.url // empty')
-          # 提取需要的请求头
-          OBS_ACL=$(echo "$UPLOAD_RESP" | jq -r '.headers["x-obs-acl"] // empty')
-          OBS_PROJECT_ID=$(echo "$UPLOAD_RESP" | jq -r '.headers["x-obs-meta-project-id"] // empty')
-          OBS_CALLBACK=$(echo "$UPLOAD_RESP" | jq -r '.headers["x-obs-callback"] // empty')
-          echo "Upload URL: ${UPLOAD_URL:0:80}..."
-          echo "::endgroup::"
-
-          if [ -z "$UPLOAD_URL" ]; then
-            echo "ERROR: Failed to get upload URL."
-            exit 1
-          fi
-
-          # ⚠️ 600s=10分钟：22MB exe PUT 到 GitCode OBS（国内服务器），跨海可能慢
-          echo "::group::Upload exe to GitCode (跨海 22MB, 最长 10min)..."
-          UPLOAD_RESP=$(curl -sS --connect-timeout 30 --max-time 600 -X PUT "$UPLOAD_URL" \
-            -H "Content-Type: application/octet-stream" \
-            -H "x-obs-acl: ${OBS_ACL}" \
-            -H "x-obs-meta-project-id: ${OBS_PROJECT_ID}" \
-            -H "x-obs-callback: ${OBS_CALLBACK}" \
-            --data-binary "@/tmp/modbusrtu_broker.exe")
-          echo "$UPLOAD_RESP" | jq '{name, size, state, message}' 2>/dev/null || echo "$UPLOAD_RESP"
-          echo "::endgroup::"
-          echo "✅ GitCode upload complete"
+          echo "✅ GitCode release sync complete (link to Gitee)"
