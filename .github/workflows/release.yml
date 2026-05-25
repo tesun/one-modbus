@@ -84,15 +84,6 @@ jobs:
           echo "- 配置方法：同级目录放 项目变量信息.xlsx（没有会自动生成模板）" >> release_notes.md
           echo "- 双击 modbusrtu_broker.exe 启动" >> release_notes.md
           echo "- 浏览器打开 http://127.0.0.1:53046/统计 即可进入" >> release_notes.md
-          echo "" >> release_notes.md
-          echo "---" >> release_notes.md
-          echo "## 下载" >> release_notes.md
-          echo "" >> release_notes.md
-          echo "| 平台 | 下载地址 |" >> release_notes.md
-          echo "|------|---------|" >> release_notes.md
-          echo "| GitHub（自带 .exe） | 本页上方附件可直接下载 |" >> release_notes.md
-          echo "| Gitee（国内快） | https://gitee.com/dingjiazhi/one-modbus/releases/download/${VERSION}/modbusrtu_broker.exe |" >> release_notes.md
-          echo "| GitCode（镜像） | 同上 Gitee 链接 |" >> release_notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
