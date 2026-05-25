@@ -1,0 +1,34 @@
+#include <windows.h>
+
+// Icon
+IDI_ICON1 ICON "app.ico"
+
+// Version info
+1 VERSIONINFO
+FILEVERSION     0,2,16,0
+PRODUCTVERSION  0,2,16,0
+FILEFLAGSMASK   0x3fL
+FILEFLAGS       0x0L
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404B0"
+        BEGIN
+            VALUE "CompanyName",      "丁家智"
+            VALUE "FileDescription",  "modbusrtu_broker - Modbus RTU 数据采集网关"
+            VALUE "FileVersion",      "0.2.16.0"
+            VALUE "InternalName",     "modbusrtu_broker"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 丁家智"
+            VALUE "OriginalFilename", "modbusrtu_broker.exe"
+            VALUE "ProductName",      "one-modbus"
+            VALUE "ProductVersion",   "0.2.16.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0804, 1200
+    END
+END
