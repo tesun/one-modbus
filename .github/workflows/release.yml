@@ -45,7 +45,33 @@ jobs:
 
       - name: Build version resources (.syso + icon)
         run: |
-          echo "Compile versioninfo -> resource.syso..."
+          echo "Generate versioninfo from git tag..."
+          VER="${GITHUB_REF#refs/tags/v}"  # v0.3.0 → 0.3.0
+          VER_DOT="${VER}.0"                # 0.3.0 → 0.3.0.0 (Windows 4-part)
+          IFS='.' read -ra PARTS <<< "$VER"
+          cat > versioninfo.json << EOF
+{
+  "FixedFileInfo": {
+    "FileVersion": { "Major": ${PARTS[0]}, "Minor": ${PARTS[1]}, "Patch": ${PARTS[2]}, "Build": 0 },
+    "ProductVersion": { "Major": ${PARTS[0]}, "Minor": ${PARTS[1]}, "Patch": ${PARTS[2]}, "Build": 0 },
+    "FileFlagsMask": "3f", "FileFlags": "00", "FileOS": "040004", "FileType": "01", "FileSubType": "00"
+  },
+  "StringFileInfo": {
+    "Comments": "获取新版: github.com/dingjiazhi/one-modbus/releases | gitee.com/dingjiazhi/one-modbus/releases",
+    "CompanyName": "丁家智",
+    "FileDescription": "modbusrtu_broker - Modbus RTU 采集网关 | GitHub: github.com/dingjiazhi/one-modbus/releases | Gitee: gitee.com/dingjiazhi/one-modbus/releases",
+    "FileVersion": "${VER_DOT}",
+    "InternalName": "modbusrtu_broker",
+    "LegalCopyright": "Copyright (C) 2026 丁家智",
+    "OriginalFilename": "modbusrtu_broker.exe",
+    "ProductName": "one-modbus",
+    "ProductVersion": "${VER_DOT}"
+  },
+  "IconPath": "app.ico",
+  "ManifestPath": ""
+}
+EOF
+          echo "Compile -> resource.syso..."
           go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
           ~/go/bin/goversioninfo -icon app.ico versioninfo.json
 
