@@ -54,10 +54,9 @@ jobs:
         run: |
           BUILD_TIME=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M')
           sed -i "s/编译时间: [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}/编译时间: ${BUILD_TIME}/" modbusrtu_broker.go
+          # 嵌入 .syso 版本资源文件降低杀软误报（注释不能夹在 bash 续行符 \ 中间）
           CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
-          CGO_CFLAGS="-D_WIN32" CGO_LDFLAGS="-lws2_32"
-          # 嵌入 .syso 版本资源文件（公司名、版本号、图标）降低杀软误报
-          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+          CGO_CFLAGS="-D_WIN32" CGO_LDFLAGS="-lws2_32" \
           go build -ldflags '-s -w -extldflags=-static' -o modbusrtu_broker.exe modbusrtu_broker.go
 
       - name: Upload artifact
