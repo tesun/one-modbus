@@ -3,7 +3,7 @@
 **English** | **中文**
 
 A production-grade Modbus RTU gateway for Windows. Single `.exe`, no dependencies.
-一个 .exe 搞定工业数据采集全链路，替代组态王。
+一个 .exe 搞定工业数据采集全链路。
 
 📥 **Download / 下载**：
 - [GitHub Releases](https://github.com/dingjiazhi/one-modbus/releases) (International)
