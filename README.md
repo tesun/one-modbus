@@ -1,13 +1,19 @@
-# one-modbus — Modbus RTU 数据采集网关
+# one-modbus — Modbus RTU Data Acquisition Gateway / 数据采集网关
 
+**English** | **中文**
+
+A production-grade Modbus RTU gateway for Windows. Single `.exe`, no dependencies.
+一个 .exe 搞定工业数据采集全链路，替代组态王。
+
+📥 **Download / 下载**：
+- [GitHub Releases](https://github.com/dingjiazhi/one-modbus/releases) (International)
+- [Gitee Release](https://gitee.com/dingjiazhi/one-modbus/releases) (国内快)
+
+---
+
+> A 30-year electrician built this because he wasn't satisfied with existing software. He learned Go along the way.
+>
 > 一个干了 30 年电工，不满意现有软件，边学 Go 边做出来的开源网关。
-> 一个 .exe 搞定工业数据采集全链路，**替代组态王**。
-
-传统工业数据采集需要三套独立系统：采集软件 + 可视化平台 + 报警开发。
-**这一个 .exe 全包了。**
-
-📥 **国内下载（快）**：[Gitee Release](https://gitee.com/dingjiazhi/one-modbus/releases)
-🌐 **国际下载**：[GitHub Release](https://github.com/dingjiazhi/one-modbus/releases)
 
 ---
 
