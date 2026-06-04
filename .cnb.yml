@@ -4,7 +4,8 @@
       docker:
         image: golang:1.22-bookworm
       stages:
-        - script: |
+        - name: run-build
+          script: |
             apt-get update -qq
             apt-get install -y -qq gcc-mingw-w64-x86-64 mingw-w64-tools jq curl
             go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
