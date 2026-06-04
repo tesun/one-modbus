@@ -1,4 +1,12 @@
-master:
-  push:
-    - stages:
-        - echo "simple test $(date)"
+"v*":
+  tag_push:
+    - name: Build & Release
+      docker:
+        image: golang:1.22-bookworm
+      stages:
+        - name: run-build
+          script: |
+            apt-get update -qq
+            apt-get install -y -qq gcc-mingw-w64-x86-64 mingw-w64-tools jq curl python3
+            go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+            bash .cnb/build.sh
