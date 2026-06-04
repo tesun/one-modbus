@@ -1,4 +1,6 @@
 # one-modbus 自动构建配置
+# master push → 编译检查
+# v* tag_push → 编译 exe + 创建 CNB Release
 
 master:
   push:
@@ -19,18 +21,72 @@ master:
         - name: install-deps
           script: |
             apt-get update -qq
-            apt-get install -y -qq gcc-mingw-w64-x86-64 mingw-w64-tools jq curl python3
+            apt-get install -y -qq gcc-mingw-w64-x86-64 mingw-w64-tools jq curl
             go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
         - name: gen-versioninfo
           script: |
             set -ex
-            VER=v999
-            MAJ=0; MIN=0; PAT=0
-            IFS='.' read -ra P <<< "$VER"
-            python3 -c 'import json; json.dump({"FixedFileInfo":{"FileVersion":{"Major":0,"Minor":0,"Patch":0,"Build":0},"ProductVersion":{"Major":0,"Minor":0,"Patch":0,"Build":0},"FileFlagsMask":"3f","FileFlags":"00","FileOS":"040004","FileType":"01","FileSubType":"00"},"StringFileInfo":{"Comments":"test","CompanyName":"DJ","FileDescription":"modbusrtu_broker","FileVersion":"0.0.0.0","InternalName":"modbusrtu_broker","LegalCopyright":"Copyright DJ","OriginalFilename":"modbusrtu_broker.exe","ProductName":"one-modbus","ProductVersion":"0.0.0.0"},"IconPath":"app.ico","ManifestPath":""}, open("versioninfo.json","w"), indent=2)'
-            echo "versioninfo.json generated"
+            VER="${CNB_BRANCH#v}"
+            python3 -c "
+V = '$VER'.split('.')
+MAJ = int(V[0]) if len(V) > 0 else 0
+MIN = int(V[1]) if len(V) > 1 else 0
+PAT = int(V[2]) if len(V) > 2 else 0
+import json
+info = {
+  'FixedFileInfo': {
+    'FileVersion': {'Major': MAJ, 'Minor': MIN, 'Patch': PAT, 'Build': 0},
+    'ProductVersion': {'Major': MAJ, 'Minor': MIN, 'Patch': PAT, 'Build': 0},
+    'FileFlagsMask': '3f', 'FileFlags': '00', 'FileOS': '040004',
+    'FileType': '01', 'FileSubType': '00'},
+  'StringFileInfo': {
+    'Comments': 'get: gitee.com/dingjiazhi/one-modbus/releases',
+    'CompanyName': 'DJ',
+    'FileDescription': 'modbusrtu_broker - Modbus RTU Gateway',
+    'FileVersion': '$VER.0',
+    'InternalName': 'modbusrtu_broker',
+    'LegalCopyright': 'Copyright DJ',
+    'OriginalFilename': 'modbusrtu_broker.exe',
+    'ProductName': 'one-modbus',
+    'ProductVersion': '$VER.0'},
+  'IconPath': 'app.ico',
+  'ManifestPath': ''}
+json.dump(info, open('versioninfo.json','w'), indent=2)
+"
+            ~/go/bin/goversioninfo -icon app.ico versioninfo.json
+            ls -la resource.syso
         - name: build-exe
           script: |
-            echo "BUILD-EXE START"
-            ls -la
-            echo "BUILD-EXE END"
+            set -ex
+            export GOPROXY=https://goproxy.cn,direct
+            go mod init modbusrtu_broker 2>/dev/null
+            go mod tidy
+            CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+              CGO_CFLAGS="-D_WIN32" CGO_LDFLAGS="-lws2_32" \
+              go build -ldflags '-s -w -extldflags=-static' -o modbusrtu_broker.exe
+            ls -lh modbusrtu_broker.exe
+        - name: create-release
+          script: |
+            set -ex
+            VERSION="$CNB_BRANCH"
+            REPO="$CNB_REPO_SLUG"
+            EXE_NAME="modbusrtu_broker_${VERSION#v}.exe"
+            cp modbusrtu_broker.exe "/tmp/$EXE_NAME"
+            BODY=$(python3 -c "import json; print(json.dumps('# one-modbus $VERSION\n\n- Windows amd64 exe\n- Gitee download: https://gitee.com/dingjiazhi/one-modbus/releases/tag/$VERSION'))")
+            RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases" \
+              -H "Authorization: Bearer $CNB_TOKEN" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/vnd.cnb.api+json" \
+              -d "{\"tag_name\":\"$VERSION\",\"name\":\"one-modbus $VERSION\",\"body\":$BODY,\"target_commitish\":\"master\"}")
+            RELEASE_ID=$(echo "$RESP" | jq -r '.id // empty')
+            echo "Release ID: $RELEASE_ID"
+            [ -n "$RELEASE_ID" ] || { echo "FAILED: $RESP"; exit 1; }
+            EXE_SIZE=$(stat -c%s "/tmp/$EXE_NAME")
+            UPLOAD_RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases/$RELEASE_ID/asset-upload-url" \
+              -H "Authorization: Bearer $CNB_TOKEN" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/vnd.cnb.api+json" \
+              -d "{\"asset_name\":\"$EXE_NAME\",\"size\":$EXE_SIZE,\"overwrite\":true}")
+            UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.url // empty')
+            [ -n "$UPLOAD_URL" ] && curl -s -X PUT "$UPLOAD_URL" -H "Content-Type: application/octet-stream" --data-binary @"/tmp/$EXE_NAME"
+            echo "OK: https://cnb.cool/$REPO/releases/tag/$VERSION"
