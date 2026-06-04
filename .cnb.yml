@@ -40,12 +40,12 @@ info = {
     'FileFlagsMask': '3f', 'FileFlags': '00', 'FileOS': '040004',
     'FileType': '01', 'FileSubType': '00'},
   'StringFileInfo': {
-    'Comments': 'get: gitee.com/dingjiazhi/one-modbus/releases',
-    'CompanyName': 'DJ',
-    'FileDescription': 'modbusrtu_broker - Modbus RTU Gateway',
+    'Comments': '获取新版: gitee.com/dingjiazhi/one-modbus/releases | github.com/dingjiazhi/one-modbus/releases',
+    'CompanyName': '丁家智',
+    'FileDescription': 'modbusrtu_broker - Modbus RTU 数据采集网关 | 更新: gitee.com/dingjiazhi/one-modbus/releases | github.com/dingjiazhi/one-modbus/releases',
     'FileVersion': '$VER.0',
     'InternalName': 'modbusrtu_broker',
-    'LegalCopyright': 'Copyright DJ',
+    'LegalCopyright': 'Copyright (C) 2026 丁家智',
     'OriginalFilename': 'modbusrtu_broker.exe',
     'ProductName': 'one-modbus',
     'ProductVersion': '$VER.0'},
@@ -72,7 +72,7 @@ json.dump(info, open('versioninfo.json','w'), indent=2)
             REPO="$CNB_REPO_SLUG"
             EXE_NAME="modbusrtu_broker_${VERSION#v}.exe"
             cp modbusrtu_broker.exe "/tmp/$EXE_NAME"
-            BODY=$(python3 -c "import json; print(json.dumps('# one-modbus $VERSION\n\n- Windows amd64 exe\n- Gitee download: https://gitee.com/dingjiazhi/one-modbus/releases/tag/$VERSION'))")
+            BODY=$(python3 -c "import json; print(json.dumps('# one-modbus $VERSION\n\n- Windows amd64 单文件 exe，无需安装，解压即用\n- 配置方法：同级目录放 项目变量信息.xlsx（没有会自动生成模板）\n- 双击 modbusrtu_broker.exe 启动\n- 浏览器打开 http://127.0.0.1:53046/统计 即可进入\n\n## 下载\n👉 [Gitee 下载](https://gitee.com/dingjiazhi/one-modbus/releases/tag/$VERSION)'))")
             RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases" \
               -H "Authorization: Bearer $CNB_TOKEN" \
               -H "Content-Type: application/json" \
