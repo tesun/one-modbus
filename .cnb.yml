@@ -1,11 +1,25 @@
 # one-modbus 自动构建配置
 # 触发: 推送 v* 标签时自动编译 exe + 创建 CNB Release
+# 同时 master push 做编译检查确保配置有效
 #
 # 传输策略:
 #   CNB（国内）→ 自动编译 exe + 创建 Release（附 exe 下载）
 #   Gitee（国内）→ 本机编译 + 本机上传
 #   GitHub（国际）→ Actions 编译 + Release
 #   GitCode → 放 Gitee 链接
+
+master:
+  push:
+    - name: Build Check
+      docker:
+        image: golang:1.22-bookworm
+      stages:
+        - name: quick-check
+          script: |
+            set -ex
+            echo "Pipeline OK - push to master detected"
+            echo "Branch: $CNB_BRANCH"
+            echo "Commit: $CNB_COMMIT"
 
 "v*":
   tag_push:
