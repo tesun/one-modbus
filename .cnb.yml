@@ -15,11 +15,15 @@ v*:
       stages:
         - name: install-tools
           script: |
+            set -ex
             apt-get update -qq
             apt-get install -y -qq gcc-mingw-w64-x86-64 mingw-w64-tools jq curl
             go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
         - name: generate-versioninfo
           script: |
+            set -ex
+            pwd
+            ls -la
             VER="${CNB_BRANCH#v}"
             VER_DOT="${VER}.0"
             IFS='.' read -ra PARTS <<< "$VER"
@@ -46,9 +50,14 @@ v*:
             }
             VEOF
             ~/go/bin/goversioninfo -icon app.ico versioninfo.json
+            ls -la *.syso
         - name: build-exe
           script: |
-            go mod init modbusrtu_broker 2>/dev/null || true
+            set -ex
+            pwd
+            ls -la
+            export GOPROXY=https://goproxy.cn,direct
+            go mod init modbusrtu_broker
             go mod tidy
             CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
               CGO_CFLAGS="-D_WIN32" CGO_LDFLAGS="-lws2_32" \
@@ -57,6 +66,7 @@ v*:
             ls -lh modbusrtu_broker.exe
         - name: create-release
           script: |
+            set -ex
             VERSION="$CNB_BRANCH"
             REPO="$CNB_REPO_SLUG"
             EXE_NAME="modbusrtu_broker_${VERSION#v}.exe"
