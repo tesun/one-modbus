@@ -24,7 +24,7 @@ CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
 ls -lh /tmp/$FNAME
 
 # 创建 Release
-BODY=$(printf '{"tag_name":"%s","name":"one-modbus %s","body":"# one-modbus %s\n\nDownload: https://gitee.com/dingjiazhi/one-modbus/releases/tag/%s","target_commitish":"master"}' \
+BODY=$(printf '{"tag_name":"%s","name":"one-modbus %s","body":"# one-modbus %s\\n\\nDownload: https://gitee.com/dingjiazhi/one-modbus/releases/tag/%s","target_commitish":"master"}' \
   "$CNB_BRANCH" "$CNB_BRANCH" "$CNB_BRANCH" "$CNB_BRANCH")
 RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases" \
   -H "Authorization: Bearer $CNB_TOKEN" \
