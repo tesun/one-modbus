@@ -1,11 +1,4 @@
 # one-modbus 自动构建配置
-# 触发: master push 做编译检查，v* tag push 自动编译 exe + 创建 Release
-#
-# 传输策略:
-#   CNB（国内）→ 自动编译 exe + 创建 Release（附 exe 下载）
-#   Gitee（国内）→ 本机编译 + 本机上传
-#   GitHub（国际）→ Actions 编译 + Release
-#   GitCode → 放 Gitee 链接
 
 master:
   push:
@@ -14,7 +7,8 @@ master:
         image: golang:1.22-bookworm
       stages:
         - name: quick-check
-          script: echo "Pipeline OK - master:$CNB_BRANCH commit:$CNB_COMMIT"
+          script: |
+            echo "Pipeline OK master:$CNB_BRANCH"
 
 "v*":
   tag_push:
@@ -22,95 +16,21 @@ master:
       docker:
         image: golang:1.22-bookworm
       stages:
-        - name: install-tools
+        - name: install-deps
           script: |
-            set -ex
             apt-get update -qq
             apt-get install -y -qq gcc-mingw-w64-x86-64 mingw-w64-tools jq curl python3
             go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
-        - name: generate-versioninfo
+        - name: gen-versioninfo
           script: |
             set -ex
-            VER="${CNB_BRANCH#v}"
-            VER_DOT="${VER}.0"
+            VER=v999
+            MAJ=0; MIN=0; PAT=0
             IFS='.' read -ra P <<< "$VER"
-            python3 -c "
-import json
-V = '$VER'.split('.')
-info = {
-  'FixedFileInfo': {
-    'FileVersion': {'Major': int(V[0]), 'Minor': int(V[1]), 'Patch': int(V[2]), 'Build': 0},
-    'ProductVersion': {'Major': int(V[0]), 'Minor': int(V[1]), 'Patch': int(V[2]), 'Build': 0},
-    'FileFlagsMask': '3f', 'FileFlags': '00', 'FileOS': '040004',
-    'FileType': '01', 'FileSubType': '00'
-  },
-  'StringFileInfo': {
-    'Comments': 'get: gitee.com/dingjiazhi/one-modbus/releases | github.com/dingjiazhi/one-modbus/releases',
-    'CompanyName': 'DJ',
-    'FileDescription': 'modbusrtu_broker - Modbus RTU Gateway',
-    'FileVersion': '$VER_DOT',
-    'InternalName': 'modbusrtu_broker',
-    'LegalCopyright': 'Copyright (C) 2026 DJ',
-    'OriginalFilename': 'modbusrtu_broker.exe',
-    'ProductName': 'one-modbus',
-    'ProductVersion': '$VER_DOT'
-  },
-  'IconPath': 'app.ico',
-  'ManifestPath': ''
-}
-with open('versioninfo.json','w') as f:
-  json.dump(info, f, indent=2)
-"
-            ls -la versioninfo.json
-            ~/go/bin/goversioninfo -icon app.ico versioninfo.json
-            ls -la resource.syso
+            python3 -c 'import json; json.dump({"FixedFileInfo":{"FileVersion":{"Major":0,"Minor":0,"Patch":0,"Build":0},"ProductVersion":{"Major":0,"Minor":0,"Patch":0,"Build":0},"FileFlagsMask":"3f","FileFlags":"00","FileOS":"040004","FileType":"01","FileSubType":"00"},"StringFileInfo":{"Comments":"test","CompanyName":"DJ","FileDescription":"modbusrtu_broker","FileVersion":"0.0.0.0","InternalName":"modbusrtu_broker","LegalCopyright":"Copyright DJ","OriginalFilename":"modbusrtu_broker.exe","ProductName":"one-modbus","ProductVersion":"0.0.0.0"},"IconPath":"app.ico","ManifestPath":""}, open("versioninfo.json","w"), indent=2)'
+            echo "versioninfo.json generated"
         - name: build-exe
           script: |
-            set -ex
-            export GOPROXY=https://goproxy.cn,direct
-            go mod init modbusrtu_broker 2>/dev/null
-            go mod tidy
-            CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
-              CGO_CFLAGS="-D_WIN32" CGO_LDFLAGS="-lws2_32" \
-              go build -ldflags '-s -w -extldflags=-static' -o modbusrtu_broker.exe
-            ls -lh modbusrtu_broker.exe
-        - name: create-release
-          script: |
-            set -ex
-            VERSION="$CNB_BRANCH"
-            REPO="$CNB_REPO_SLUG"
-            EXE_NAME="modbusrtu_broker_${VERSION#v}.exe"
-            cp modbusrtu_broker.exe "/tmp/$EXE_NAME"
-            python3 -c "
-import json
-notes = '# one-modbus $VERSION\n\n- Windows amd64 exe\n- 双击 modbusrtu_broker.exe 启动\n- http://127.0.0.1:53046/统计\n\n## Download\n-> Gitee: https://gitee.com/dingjiazhi/one-modbus/releases/tag/$VERSION'
-body = json.dumps(notes)
-print(body)
-" > /tmp/release_body.txt
-            RELEASE_BODY=$(cat /tmp/release_body.txt)
-            echo "Creating Release $VERSION ..."
-            RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases" \
-              -H "Authorization: Bearer $CNB_TOKEN" \
-              -H "Content-Type: application/json" \
-              -H "Accept: application/vnd.cnb.api+json" \
-              -d "{\"tag_name\":\"$VERSION\",\"name\":\"one-modbus $VERSION\",\"body\":$RELEASE_BODY,\"target_commitish\":\"master\"}")
-            RELEASE_ID=$(echo "$RESP" | jq -r '.id // empty')
-            echo "Release ID: $RELEASE_ID"
-            [ -n "$RELEASE_ID" ] || { echo "FAILED: $RESP"; exit 1; }
-            EXE_SIZE=$(stat -c%s "/tmp/$EXE_NAME")
-            UPLOAD_RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases/$RELEASE_ID/asset-upload-url" \
-              -H "Authorization: Bearer $CNB_TOKEN" \
-              -H "Content-Type: application/json" \
-              -H "Accept: application/vnd.cnb.api+json" \
-              -d "{\"asset_name\":\"$EXE_NAME\",\"size\":$EXE_SIZE,\"overwrite\":true}")
-            UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.url // empty')
-            UPLOAD_TOKEN=$(echo "$UPLOAD_RESP" | jq -r '.upload_token // empty')
-            ASSET_PATH=$(echo "$UPLOAD_RESP" | jq -r '.path // empty')
-            if [ -n "$UPLOAD_URL" ]; then
-              curl -s -X PUT "$UPLOAD_URL" -H "Content-Type: application/octet-stream" --data-binary @"/tmp/$EXE_NAME"
-              [ -n "$UPLOAD_TOKEN" ] && [ -n "$ASSET_PATH" ] && \
-                curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases/$RELEASE_ID/asset-upload-confirmation/$UPLOAD_TOKEN/$ASSET_PATH" \
-                  -H "Authorization: Bearer $CNB_TOKEN" -H "Accept: application/vnd.cnb.api+json"
-              echo "EXE uploaded: $EXE_NAME"
-            fi
-            echo "RELEASE OK: https://cnb.cool/$REPO/releases/tag/$VERSION"
+            echo "BUILD-EXE START"
+            ls -la
+            echo "BUILD-EXE END"
