@@ -7,7 +7,7 @@
 #   GitHub（国际）→ Actions 编译 + Release
 #   GitCode → 放 Gitee 链接
 
-v*:
+master:
   tag_push:
     - name: Build & Release
       docker:
@@ -72,7 +72,6 @@ v*:
             EXE_NAME="modbusrtu_broker_${VERSION#v}.exe"
             cp modbusrtu_broker.exe "/tmp/$EXE_NAME"
 
-            # 生成 release notes
             cat > /tmp/release_notes.md << EOF
             # one-modbus $VERSION
 
@@ -86,7 +85,6 @@ v*:
             EOF
             RELEASE_BODY=$(cat /tmp/release_notes.md | jq -Rs .)
 
-            # 创建 Release
             echo "Creating CNB Release for $VERSION..."
             RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases" \
               -H "Authorization: Bearer $CNB_TOKEN" \
@@ -96,42 +94,23 @@ v*:
 
             RELEASE_ID=$(echo "$RESP" | jq -r '.id // empty')
             echo "Release ID: $RELEASE_ID"
+            [ -n "$RELEASE_ID" ] || { echo "FAILED: $RESP"; exit 1; }
 
-            if [ -z "$RELEASE_ID" ]; then
-              echo "Release creation failed: $RESP"
-              exit 1
-            fi
-
-            # 获取预签名上传 URL
             EXE_SIZE=$(stat -c%s "/tmp/$EXE_NAME")
-            echo "EXE size: $EXE_SIZE bytes"
             UPLOAD_RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases/$RELEASE_ID/asset-upload-url" \
               -H "Authorization: Bearer $CNB_TOKEN" \
               -H "Content-Type: application/json" \
               -H "Accept: application/vnd.cnb.api+json" \
               -d "{\"asset_name\":\"$EXE_NAME\",\"size\":$EXE_SIZE,\"overwrite\":true}")
 
-            echo "Upload URL response: $UPLOAD_RESP"
             UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.url // empty')
             UPLOAD_TOKEN=$(echo "$UPLOAD_RESP" | jq -r '.upload_token // empty')
             ASSET_PATH=$(echo "$UPLOAD_RESP" | jq -r '.path // empty')
 
             if [ -n "$UPLOAD_URL" ]; then
-              echo "Uploading exe..."
-              curl -s -X PUT "$UPLOAD_URL" \
-                -H "Content-Type: application/octet-stream" \
-                --data-binary @"/tmp/$EXE_NAME"
-
-              # 确认上传完成
-              if [ -n "$UPLOAD_TOKEN" ] && [ -n "$ASSET_PATH" ]; then
-                echo "Confirming upload..."
+              curl -s -X PUT "$UPLOAD_URL" -H "Content-Type: application/octet-stream" --data-binary @"/tmp/$EXE_NAME"
+              [ -n "$UPLOAD_TOKEN" ] && [ -n "$ASSET_PATH" ] && \
                 curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases/$RELEASE_ID/asset-upload-confirmation/$UPLOAD_TOKEN/$ASSET_PATH" \
-                  -H "Authorization: Bearer $CNB_TOKEN" \
-                  -H "Accept: application/vnd.cnb.api+json"
-              fi
-              echo "Release $VERSION complete with exe asset: $EXE_NAME"
-            else
-              echo "Release $VERSION created without asset upload (pre-signed URL not available)"
+                  -H "Authorization: Bearer $CNB_TOKEN" -H "Accept: application/vnd.cnb.api+json"
             fi
-
             echo "Done: https://cnb.cool/$REPO/releases/tag/$VERSION"
