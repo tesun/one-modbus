@@ -1,13 +1,4 @@
-# one-modbus auto build & release
-
-master:
-  push:
-    - name: Build Check
-      docker:
-        image: golang:1.22-bookworm
-      stages:
-        - name: check
-          script: echo "OK master:$CNB_BRANCH"
+# one-modbus auto build & release on v* tag push
 
 "v*":
   tag_push:
@@ -24,13 +15,11 @@ master:
           script: |
             set -ex
             VER="${CNB_BRANCH#v}"
-            printf '{"FixedFileInfo":{"FileVersion":{"Major":%s,"Minor":%s,"Patch":%s,"Build":0},"ProductVersion":{"Major":%s,"Minor":%s,"Patch":%s,"Build":0},"FileFlagsMask":"3f","FileFlags":"00","FileOS":"040004","FileType":"01","FileSubType":"00"},"StringFileInfo":{"Comments":"get: gitee.com/dingjiazhi/one-modbus/releases","CompanyName":"DJ","FileDescription":"modbusrtu_broker - Modbus RTU Gateway","FileVersion":"%s.0","InternalName":"modbusrtu_broker","LegalCopyright":"Copyright 2026 DJ","OriginalFilename":"modbusrtu_broker.exe","ProductName":"one-modbus","ProductVersion":"%s.0"},"IconPath":"app.ico","ManifestPath":""}' \
-              $(echo $VER | cut -d. -f1) $(echo $VER | cut -d. -f2) $(echo $VER | cut -d. -f3) \
-              $(echo $VER | cut -d. -f1) $(echo $VER | cut -d. -f2) $(echo $VER | cut -d. -f3) \
-              $VER $VER > versioninfo.json
-            cat versioninfo.json | head -5
+            P1=$(echo $VER | cut -d. -f1)
+            P2=$(echo $VER | cut -d. -f2)
+            P3=$(echo $VER | cut -d. -f3)
+            printf '{"FixedFileInfo":{"FileVersion":{"Major":%s,"Minor":%s,"Patch":%s,"Build":0},"ProductVersion":{"Major":%s,"Minor":%s,"Patch":%s,"Build":0},"FileFlagsMask":"3f","FileFlags":"00","FileOS":"040004","FileType":"01","FileSubType":"00"},"StringFileInfo":{"Comments":"get: gitee.com/dingjiazhi/one-modbus/releases","CompanyName":"DJ","FileDescription":"modbusrtu_broker","FileVersion":"%s.0","InternalName":"modbusrtu_broker","LegalCopyright":"Copyright 2026 DJ","OriginalFilename":"modbusrtu_broker.exe","ProductName":"one-modbus","ProductVersion":"%s.0"},"IconPath":"app.ico","ManifestPath":""}' $P1 $P2 $P3 $P1 $P2 $P3 $VER $VER > versioninfo.json
             ~/go/bin/goversioninfo -icon app.ico versioninfo.json
-            ls -la resource.syso
         - name: build-exe
           script: |
             set -ex
@@ -46,23 +35,21 @@ master:
             set -ex
             VERSION="$CNB_BRANCH"
             REPO="$CNB_REPO_SLUG"
-            EXE_NAME="modbusrtu_broker_${VERSION#v}.exe"
-            cp modbusrtu_broker.exe /tmp/$EXE_NAME
-            BODY=$(printf '{"tag_name":"%s","name":"one-modbus %s","body":"# one-modbus %s\n\nDownload: https://gitee.com/dingjiazhi/one-modbus/releases/tag/%s","target_commitish":"master"}' "$VERSION" "$VERSION" "$VERSION" "$VERSION")
+            FNAME="modbusrtu_broker_${VERSION#v}.exe"
+            cp modbusrtu_broker.exe /tmp/$FNAME
+            BODY=$(printf '{"tag_name":"%s","name":"one-modbus %s","body":"# one-modbus %s\n\nDownload: https://gitee.com/dingjiazhi/one-modbus/releases/tag/%s","target_commitish":"master"}' $VERSION $VERSION $VERSION $VERSION)
             RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases" \
               -H "Authorization: Bearer $CNB_TOKEN" \
               -H "Content-Type: application/json" \
-              -H "Accept: application/vnd.cnb.api+json" \
-              -d "$BODY")
-            RELEASE_ID=$(echo "$RESP" | jq -r '.id // empty')
-            echo "Release ID: $RELEASE_ID"
-            [ -n "$RELEASE_ID" ] || { echo "FAILED: $RESP"; exit 1; }
-            EXE_SIZE=$(stat -c%s /tmp/$EXE_NAME)
-            UPLOAD_RESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases/$RELEASE_ID/asset-upload-url" \
+              -H "Accept: application/vnd.cnb.api+json" -d "$BODY")
+            RID=$(echo $RESP | jq -r '.id // empty')
+            [ -n "$RID" ] || { echo "FAIL: $RESP"; exit 1; }
+            SZ=$(stat -c%s /tmp/$FNAME)
+            URESP=$(curl -s -X POST "$CNB_API_ENDPOINT/$REPO/-/releases/$RID/asset-upload-url" \
               -H "Authorization: Bearer $CNB_TOKEN" \
               -H "Content-Type: application/json" \
               -H "Accept: application/vnd.cnb.api+json" \
-              -d "{\"asset_name\":\"$EXE_NAME\",\"size\":$EXE_SIZE,\"overwrite\":true}")
-            UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.url // empty')
-            [ -n "$UPLOAD_URL" ] && curl -s -X PUT "$UPLOAD_URL" -H "Content-Type: application/octet-stream" --data-binary @/tmp/$EXE_NAME
+              -d "{\"asset_name\":\"$FNAME\",\"size\":$SZ,\"overwrite\":true}")
+            UURL=$(echo $URESP | jq -r '.url // empty')
+            [ -n "$UURL" ] && curl -s -X PUT "$UURL" -H "Content-Type: application/octet-stream" --data-binary @/tmp/$FNAME
             echo "OK: https://cnb.cool/$REPO/releases/tag/$VERSION"
