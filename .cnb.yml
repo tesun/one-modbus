@@ -1,13 +1,12 @@
-# 兜底匹配所有分支，处理 tag 自动构建（"v*" 分支模式可能不匹配 tag 推送）
-$:
-  tag_push:
+# master.push 自动构建 + Release（已验证过的流程）
+master:
+  push:
     - docker:
         image: golang:latest
       stages:
         - name: Cross-compile one-modbus.exe
           script: |
             set -e
-            echo "=== Tag: $(git describe --tags) ==="
             echo "=== Go version ==="
             go version
             echo "=== Install mingw-w64 ==="
@@ -26,7 +25,8 @@ $:
             set -e
             [ ! -f one-modbus.exe ] && echo "No binary!" && ls -la && exit 1
             OWNER="pdlei.cn" REPO="one-modbus" API="https://api.cnb.cool"
-            TAG=$(git describe --tags)
+            # 本流水线的 tag 由 pipeline 调用 API 自动创建，不需要提前打 git tag
+            TAG="v$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)"
             echo "Release tag: $TAG"
             RID=$(curl -s -X POST "$API/$OWNER/$REPO/-/releases" \
               -H "Authorization: Bearer $CNB_TOKEN" \
@@ -46,4 +46,4 @@ $:
             curl -s -X PUT "$UPURL" -H "Content-Type: application/octet-stream" --data-binary "@one-modbus.exe"
             curl -s -X POST "$VERURL" -H "Authorization: Bearer $CNB_TOKEN" -H "Accept: application/vnd.cnb.api+json"
             echo ""
-            echo "Done: https://cnb.cool/$OWNER/$REPO/-/releases/download/$TAG/one-modbus.exe"
+            echo "Release: https://cnb.cool/$OWNER/$REPO/-/releases/$TAG"
