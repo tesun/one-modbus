@@ -26,20 +26,20 @@ master:
             # 本流水线的 tag 由 pipeline 调用 API 自动创建，不需要提前打 git tag
             TAG="v$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)"
             echo "Release tag: $TAG"
-            RID=$(curl -s -X POST "$API/$OWNER/$REPO/-/releases" \
+            RESP=$(curl -s -X POST "$API/$OWNER/$REPO/-/releases" \
               -H "Authorization: Bearer $CNB_TOKEN" \
               -H "Content-Type: application/json" \
               -H "Accept: application/vnd.cnb.api+json" \
-              -d "{\"tag_name\":\"$TAG\",\"name\":\"one-modbus $TAG\",\"target_commitish\":\"master\"}" \
-              | grep -oP '"id":\K\d+')
-            [ -z "$RID" ] && echo "Release failed" && exit 1
+              -d "{\"tag_name\":\"$TAG\",\"name\":\"one-modbus $TAG\",\"target_commitish\":\"master\"}")
+            RID=$(echo "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+            [ -z "$RID" ] && echo "Release failed: $RESP" && exit 1
             UPLOAD=$(curl -s -X POST "$API/$OWNER/$REPO/-/releases/$RID/asset-upload-url" \
               -H "Authorization: Bearer $CNB_TOKEN" \
               -H "Content-Type: application/json" \
               -H "Accept: application/vnd.cnb.api+json" \
               -d "{\"asset_name\":\"one-modbus.exe\",\"size\":$(stat -c%s one-modbus.exe)}")
-            UPURL=$(echo "$UPLOAD" | grep -oP '"upload_url":"\K[^"]+')
-            VERURL=$(echo "$UPLOAD" | grep -oP '"verify_url":"\K[^"]+')
+            UPURL=$(echo "$UPLOAD" | python3 -c "import sys,json;print(json.load(sys.stdin)['upload_url'])" 2>/dev/null)
+            VERURL=$(echo "$UPLOAD" | python3 -c "import sys,json;print(json.load(sys.stdin)['verify_url'])" 2>/dev/null)
             [ -z "$UPURL" ] && echo "Upload failed: $UPLOAD" && exit 1
             curl -s -X PUT "$UPURL" -H "Content-Type: application/octet-stream" --data-binary "@one-modbus.exe"
             curl -s -X POST "$VERURL" -H "Authorization: Bearer $CNB_TOKEN" -H "Accept: application/vnd.cnb.api+json"
