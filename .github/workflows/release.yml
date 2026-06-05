@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.25'
           cache: true
 
       - name: Install mingw-w64 (CGO cross-compiler for go-sqlite3)
@@ -43,9 +43,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-mingw-w64-x86-64 mingw-w64-tools
 
-      - name: Init go.mod
+      - name: Init go.mod (skip if already exists)
         run: |
-          go mod init modbusrtu_broker
+          if [ ! -f go.mod ]; then
+            go mod init modbusrtu_broker
+          fi
           go mod tidy
 
       - name: Build version resources (.syso + icon)
