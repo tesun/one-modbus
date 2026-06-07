@@ -25,7 +25,7 @@ master:
             OWNER="pdlei.cn" REPO="one-modbus" API="https://api.cnb.cool"
             # ⚠️ 必须用 python3 解析 JSON（CNB API id 是字符串非数字）
             # ⚠️ python3 命令必须写在一行内，多行 $() 会被 CNB 解析器弄坏
-            TAG=v$(python3 -c "import json;v=json.load(open('versioninfo.json'));print(f'v{v[\"StringFileInfo\"][\"FileVersion\"].rstrip(\".0\")}')")
+            TAG=v$(python3 -c "import json;v=json.load(open('versioninfo.json'));print(f'{v[\"StringFileInfo\"][\"FileVersion\"].rstrip(\".0\")}')")
             echo "Release tag: $TAG"
             RESP=$(curl -s -X POST "$API/$OWNER/$REPO/-/releases" \
               -H "Authorization: Bearer $CNB_TOKEN" \
