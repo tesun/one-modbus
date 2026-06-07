@@ -9,16 +9,18 @@ master:
             set -e
             echo "=== Go version ==="
             go version
+            echo "=== Set Go env ==="
+            go env -w GOPROXY=https://goproxy.cn,direct
+            go env GOPROXY
             echo "=== Install mingw-w64 ==="
             apt-get update -qq && apt-get install -y -qq gcc-mingw-w64-x86-64 2>/dev/null
             x86_64-w64-mingw32-gcc --version | head -1
             echo "=== Install goversioninfo ==="
-            GOPROXY=https://goproxy.cn go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+            go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
             echo "=== Generate .syso ==="
             ~/go/bin/goversioninfo -icon app.ico versioninfo.json
             echo "=== Cross-compile ==="
             export CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc
-            export GOPROXY=https://goproxy.cn,direct
             go mod download 2>&1
             go build -o one-modbus.exe -ldflags="-s -w" . 2>&1
             ls -lh one-modbus.exe
@@ -29,7 +31,6 @@ master:
             OWNER="pdlei.cn" REPO="one-modbus" API="https://api.cnb.cool"
             TAG=v$(python3 -c "import json;v=json.load(open('versioninfo.json'));print(f'{v[\"StringFileInfo\"][\"FileVersion\"].rstrip(\".0\")}')")
             echo "Release tag: $TAG"
-            # 检查 release 是否存在
             EXISTING=$(curl -s "$API/$OWNER/$REPO/-/releases/tags/$TAG" \
               -H "Accept: application/vnd.cnb.api+json" \
               -H "Authorization: Bearer $CNB_TOKEN" | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
