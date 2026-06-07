@@ -11,7 +11,7 @@ A production-grade Modbus RTU gateway for Windows. Single `.exe`, no dependencie
 
 📥 **下载 / Download**：
 - [GitHub Releases](https://github.com/dingjiazhi/one-modbus/releases) (International)
-- [CNB Release](https://cnb.cool/pdlei.cn/one-modbus/releases) (国内快 · 自动构建)
+- [CNB Release](https://cnb.cool/pdlei.cn/one-modbus/-/releases) (国内快 · 自动构建)
 
 ---
 
