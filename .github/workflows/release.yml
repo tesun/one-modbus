@@ -112,12 +112,22 @@ jobs:
       - name: Generate release notes
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
-          echo "# one-modbus $VERSION" > release_notes.md
-          echo "" >> release_notes.md
-          echo "- Windows amd64 单文件 exe，无需安装，解压即用" >> release_notes.md
-          echo "- 配置方法：同级目录放 项目变量信息.xlsx（没有会自动生成模板）" >> release_notes.md
-          echo "- 双击 modbusrtu_broker.exe 启动" >> release_notes.md
-          echo "- 浏览器打开 http://127.0.0.1:53046/统计 即可进入" >> release_notes.md
+          cat > release_notes.md << EOF
+## one-modbus $VERSION
+
+Windows amd64 单文件 exe，无需安装，解压即用
+
+配置方法：同级目录放 项目变量信息.xlsx（没有会自动生成模板）
+双击 modbusrtu_broker.exe 启动
+浏览器打开 http://127.0.0.1:53046/统计 即可进入
+
+### 国内下载（自动构建）
+CNB Release（国内快 · 自动构建）：
+https://cnb.cool/pdlei.cn/one-modbus/-/releases/tag/$VERSION
+
+### 国际下载
+GitHub Releases：https://github.com/dingjiazhi/one-modbus/releases/tag/$VERSION
+EOF
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
