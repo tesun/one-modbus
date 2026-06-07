@@ -3,13 +3,13 @@
     "FileVersion": {
       "Major": 0,
       "Minor": 3,
-      "Patch": 28,
+      "Patch": 29,
       "Build": 0
     },
     "ProductVersion": {
       "Major": 0,
       "Minor": 3,
-      "Patch": 28,
+      "Patch": 29,
       "Build": 0
     },
     "FileFlagsMask": "3f",
@@ -22,12 +22,12 @@
     "Comments": "????: cnb.cool/pdlei.cn/one-modbus/-/releases | github.com/dingjiazhi/one-modbus/releases",
     "CompanyName": "???",
     "FileDescription": "modbusrtu_broker - Modbus RTU ?????? | ??: cnb.cool/pdlei.cn/one-modbus/-/releases | github.com/dingjiazhi/one-modbus/releases",
-    "FileVersion": "0.3.28.0",
+    "FileVersion": "0.3.29.0",
     "InternalName": "modbusrtu_broker",
     "LegalCopyright": "Copyright (C) 2026 ???",
     "OriginalFilename": "modbusrtu_broker.exe",
     "ProductName": "one-modbus",
-    "ProductVersion": "0.3.28.0"
+    "ProductVersion": "0.3.29.0"
   },
   "IconPath": "app.ico",
   "ManifestPath": ""
