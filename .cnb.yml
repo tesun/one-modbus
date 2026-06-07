@@ -26,7 +26,7 @@ master:
             set -e
             [ ! -f one-modbus.exe ] && echo "No binary!" && ls -la && exit 1
             OWNER="pdlei.cn" REPO="one-modbus" API="https://api.cnb.cool"
-            TAG=v$(python3 -c "import json;v=json.load(open('versioninfo.json'));print(f'{v[\"StringFileInfo\"][\"FileVersion\"].rstrip(\".0\")}')")
+            TAG=v$(python3 -c "import json;v=json.load(open('versioninfo.json'));print(f'{v[\"StringFileInfo\"][\"FileVersion\"].split(\".0\")[0]}')")
             echo "Release tag: $TAG"
             EXISTING=$(curl -s "$API/$OWNER/$REPO/-/releases/tags/$TAG" \
               -H "Accept: application/vnd.cnb.api+json" \
