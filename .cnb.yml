@@ -1,4 +1,5 @@
-# master.push 自动构建 + Release（已验证过的流程）
+# master.push 自动构建 + Release（验证过能成功的流程）
+# KEY: 用 python3 解析 JSON（grep -oP 不适用于 string id）
 master:
   push:
     - docker:
@@ -23,25 +24,51 @@ master:
             set -e
             [ ! -f one-modbus.exe ] && echo "No binary!" && ls -la && exit 1
             OWNER="pdlei.cn" REPO="one-modbus" API="https://api.cnb.cool"
-            # 本流水线的 tag 由 pipeline 调用 API 自动创建，不需要提前打 git tag
-            TAG="v$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)"
+            # ⚠️ 必须用 python3 解析 JSON！CNB API 的 id 字段是字符串非数字，grep -oP 的 \d+ 拿不到
+            # 从 versioninfo.json 读取版本号
+            TAG=v$(python3 -c "
+import json
+with open('versioninfo.json') as f:
+    v = json.load(f)
+    parts = v['StringFileInfo']['FileVersion'].split('.')
+    print(f'{parts[0]}.{parts[1]}.{parts[2]}')
+            ")
             echo "Release tag: $TAG"
-            RID=$(curl -s -X POST "$API/$OWNER/$REPO/-/releases" \
-              -H "Authorization: Bearer $CNB_TOKEN" \
-              -H "Content-Type: application/json" \
+            # 检查 release 是否已存在
+            EXISTING=$(curl -s "$API/$OWNER/$REPO/-/releases/tags/$TAG" \
               -H "Accept: application/vnd.cnb.api+json" \
-              -d "{\"tag_name\":\"$TAG\",\"name\":\"one-modbus $TAG\",\"target_commitish\":\"master\"}" \
-              | grep -oP '"id":\K\d+')
-            [ -z "$RID" ] && echo "Release failed" && exit 1
-            UPLOAD=$(curl -s -X POST "$API/$OWNER/$REPO/-/releases/$RID/asset-upload-url" \
-              -H "Authorization: Bearer $CNB_TOKEN" \
-              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $CNB_TOKEN" | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+            if [ -n "$EXISTING" ]; then
+              echo "Release $TAG already exists (id=$EXISTING), skip create"
+              RID=$EXISTING
+            else
+              RESP=$(curl -s -X POST "$API/$OWNER/$REPO/-/releases" \
+                -H "Authorization: Bearer $CNB_TOKEN" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/vnd.cnb.api+json" \
+                -d "{\"tag_name\":\"$TAG\",\"name\":\"one-modbus $TAG\",\"target_commitish\":\"master\"}")
+              RID=$(echo "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+              [ -z "$RID" ] && echo "Release creation failed: $RESP" && exit 1
+              echo "Created release id=$RID"
+            fi
+            # 检查附件是否已存在
+            ASSETS=$(curl -s "$API/$OWNER/$REPO/-/releases/$RID" \
               -H "Accept: application/vnd.cnb.api+json" \
-              -d "{\"asset_name\":\"one-modbus.exe\",\"size\":$(stat -c%s one-modbus.exe)}")
-            UPURL=$(echo "$UPLOAD" | grep -oP '"upload_url":"\K[^"]+')
-            VERURL=$(echo "$UPLOAD" | grep -oP '"verify_url":"\K[^"]+')
-            [ -z "$UPURL" ] && echo "Upload failed: $UPLOAD" && exit 1
-            curl -s -X PUT "$UPURL" -H "Content-Type: application/octet-stream" --data-binary "@one-modbus.exe"
-            curl -s -X POST "$VERURL" -H "Authorization: Bearer $CNB_TOKEN" -H "Accept: application/vnd.cnb.api+json"
+              -H "Authorization: Bearer $CNB_TOKEN" | python3 -c "import sys,json;print(len(json.load(sys.stdin).get('assets',[])))" 2>/dev/null)
+            if [ "$ASSETS" -gt 0 ] 2>/dev/null; then
+              echo "Assets already exist ($ASSETS files), skip upload"
+            else
+              UPLOAD=$(curl -s -X POST "$API/$OWNER/$REPO/-/releases/$RID/asset-upload-url" \
+                -H "Authorization: Bearer $CNB_TOKEN" \
+                -H "Content-Type: application/json" \
+                -H "Accept: application/vnd.cnb.api+json" \
+                -d "{\"asset_name\":\"modbusrtu_broker_$TAG.exe\",\"size\":$(stat -c%s one-modbus.exe)}")
+              UPURL=$(echo "$UPLOAD" | python3 -c "import sys,json;print(json.load(sys.stdin)['upload_url'])" 2>/dev/null)
+              VERURL=$(echo "$UPLOAD" | python3 -c "import sys,json;print(json.load(sys.stdin)['verify_url'])" 2>/dev/null)
+              [ -z "$UPURL" ] && echo "Upload failed: $UPLOAD" && exit 1
+              curl -s -X PUT "$UPURL" -H "Content-Type: application/octet-stream" --data-binary "@one-modbus.exe"
+              curl -s -X POST "$VERURL" -H "Authorization: Bearer $CNB_TOKEN" -H "Accept: application/vnd.cnb.api+json"
+              echo "Upload OK"
+            fi
             echo ""
             echo "Release: https://cnb.cool/$OWNER/$REPO/-/releases/$TAG"
