@@ -12,7 +12,10 @@ master:
             echo "=== Install mingw-w64 ==="
             apt-get update -qq && apt-get install -y -qq gcc-mingw-w64-x86-64 2>/dev/null
             x86_64-w64-mingw32-gcc --version | head -1
-            echo "=== Cross-compile (pre-committed .syso, no go install needed) ==="
+            echo "=== Generate .syso (commit-goversioninfo) ==="
+            chmod +x tools/goversioninfo
+            ./tools/goversioninfo -icon app.ico versioninfo.json
+            echo "=== Cross-compile ==="
             export CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc
             export GOPROXY=https://goproxy.cn,direct
             go mod download 2>&1

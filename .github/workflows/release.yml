@@ -66,9 +66,9 @@ jobs:
             "FileFlagsMask": "3f", "FileFlags": "00", "FileOS": "040004", "FileType": "01", "FileSubType": "00"
           },
           "StringFileInfo": {
-            "Comments": "下载新版: cnb.cool/pdlei.cn/one-modbus/releases | github.com/dingjiazhi/one-modbus/releases",
+            "Comments": "下载新版: cnb.cool/pdlei.cn/one-modbus/-/releases | github.com/dingjiazhi/one-modbus/releases",
             "CompanyName": "丁家智",
-            "FileDescription": "modbusrtu_broker - Modbus RTU 数据采集网关 | 更新: cnb.cool/pdlei.cn/one-modbus/releases | github.com/dingjiazhi/one-modbus/releases",
+            "FileDescription": "modbusrtu_broker - Modbus RTU 数据采集网关 | 更新: cnb.cool/pdlei.cn/one-modbus/-/releases | github.com/dingjiazhi/one-modbus/releases",
             "FileVersion": "${VER_DOT}",
             "InternalName": "modbusrtu_broker",
             "LegalCopyright": "Copyright (C) 2026 丁家智",
