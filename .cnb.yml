@@ -38,7 +38,7 @@ master:
               -H "Authorization: Bearer $CNB_TOKEN" \
               -H "Content-Type: application/json" \
               -H "Accept: application/vnd.cnb.api+json" \
-              -d "{\"asset_name\":\"modbusrtu_broker_$TAG.exe\",\"size\":$(stat -c%s one-modbus.exe)}")
+              -d "{\"asset_name\":\"modbusrtu_broker.exe\",\"size\":$(stat -c%s one-modbus.exe)}")
             UPURL=$(echo "$UPLOAD" | python3 -c "import sys,json;print(json.load(sys.stdin)['upload_url'])" 2>/dev/null)
             VERURL=$(echo "$UPLOAD" | python3 -c "import sys,json;print(json.load(sys.stdin)['verify_url'])" 2>/dev/null)
             [ -z "$UPURL" ] && echo "Upload failed: $UPLOAD" && exit 1
